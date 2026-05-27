@@ -1,0 +1,250 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="番茄时钟">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png">
+<link rel="manifest" href="manifest.json">
+<title>番茄时钟</title>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;--text-dim:#8b949e;--text-muted:#5c6370;--accent:#f0883e;--accent2:#d29922;--green:#3fb950;--red:#f85149;--blue:#58a6ff;--rose:#db61a2;--cyan:#39c5cf;--radius:8px;--font:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;--font-mono:'SF Mono','Menlo',monospace;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;user-select:none;-webkit-user-select:none;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom)}
+nav{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);min-height:44px}
+nav button{flex:1;padding:12px 0;background:none;border:none;color:var(--text-dim);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);letter-spacing:.3px}
+nav button:hover{color:var(--text)}nav button.active{color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.view{display:none;flex-direction:column;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.view.active{display:flex}
+.view-content{padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+
+/* Sysmon */
+.sysmon-bar{display:flex;gap:10px;padding:6px 12px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border);background:var(--surface);align-items:center;flex-shrink:0;flex-wrap:wrap}
+.sysmon-item{display:flex;align-items:center;gap:4px}.sysmon-val{font-family:var(--font-mono);font-weight:600;color:var(--text);display:inline-block;min-width:24px;text-align:right}
+.sysmon-val.warn{color:var(--accent2)}.sysmon-val.hot{color:var(--red)}
+
+/* Presence */
+.presence-bar{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:10px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.presence-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.ios-badge{font-size:9px;color:var(--text-muted);margin-left:auto}
+
+/* Timer */
+.timer-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:16px}
+.ring-container{position:relative;width:180px;height:180px}.ring-container svg{transform:rotate(-90deg);width:180px;height:180px}
+.ring-bg{fill:none;stroke:var(--border);stroke-width:7}.ring-progress{fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset .3s linear}.ring-progress.break{stroke:var(--green)}
+.timer-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.timer-time{font-size:40px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-1px}.timer-label{font-size:13px;color:var(--text-dim);margin-top:2px}
+.timer-controls{display:flex;gap:14px}
+.timer-controls button{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.timer-controls button.primary{width:60px;height:60px;background:var(--accent);border-color:var(--accent);color:#fff;font-size:22px}
+.timer-controls button.primary.break-mode{background:var(--green);border-color:var(--green)}
+.timer-presets{display:flex;gap:8px;font-size:12px;color:var(--text-muted)}.timer-presets span{cursor:pointer;padding:4px 10px;border-radius:4px}
+.timer-presets span.current{color:var(--accent);font-weight:600}.timer-presets .sep{color:var(--border)}
+
+/* Wellness */
+.wellness-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.wellness-overlay.show{display:flex}.wellness-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:320px;text-align:center}
+.wellness-card h3{font-size:15px;margin-bottom:4px}.wellness-card>p{font-size:12px;color:var(--text-dim);margin-bottom:14px}
+.wellness-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wellness-item{padding:12px 8px;border-radius:10px;border:1.5px solid var(--border);cursor:pointer;font-size:13px}
+.wellness-item.checked{border-color:var(--green);background:rgba(63,185,80,.08)}
+.wellness-card>button{margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font)}
+
+/* Break overlay */
+.force-break-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.force-break-overlay.show{display:flex}
+.force-break-card{background:var(--surface);border:2px solid var(--red);border-radius:16px;padding:24px;width:100%;max-width:360px;text-align:center}
+.force-break-card h2{font-size:17px;color:var(--red);margin-bottom:12px}
+.force-break-card .fb-timer{font-size:56px;font-weight:700;margin:12px 0;letter-spacing:-2px}
+.force-break-card .fb-timer.done{color:var(--green)}
+.force-break-card .fb-bar{height:6px;background:var(--border);border-radius:3px;margin:10px 0;overflow:hidden}
+.force-break-card .fb-fill{height:100%;background:var(--green);border-radius:3px;transition:width .5s linear}
+.force-break-card .fb-info{font-size:11px;color:var(--text-dim);margin:8px 0;line-height:1.6}
+.force-break-card .fb-quote{font-size:11px;color:var(--text-dim);font-style:italic;line-height:1.5;margin:8px 0;padding:6px 10px;background:rgba(255,255,255,.02);border-radius:6px}
+.force-break-card .fb-pomo{font-size:11px;color:var(--text-dim);margin:6px 0}
+.force-break-card button{padding:12px 24px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font);width:100%}
+.force-break-card button:disabled{opacity:.3}
+.force-break-card button.fb-done-btn{background:var(--green);color:#fff}
+
+/* Stats */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center}
+.kpi-val{font-size:22px;font-weight:700;color:var(--accent)}.kpi-label{font-size:10px;color:var(--text-muted);margin-top:2px}
+
+/* Charts */
+.chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+.chart-panel svg{display:block}
+.chart-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--text-dim)}
+.chart-legend .leg-item{display:flex;align-items:center;gap:4px}.chart-legend .leg-dot{width:7px;height:7px;border-radius:50%}.chart-legend .leg-line{width:12px;height:1.5px}.chart-legend .leg-band{width:12px;height:7px;border-radius:2px;opacity:.3}
+
+.section-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.section-header h2{font-size:13px;font-weight:600}
+.time-btns{display:flex;gap:2px}.time-btns button{padding:4px 8px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);font-size:10px;font-family:var(--font)}
+.time-btns button.sel{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.08)}
+
+/* Key Metrics */
+.key-metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.key-metric-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;position:relative}
+.key-metric-card.selected{border-color:var(--blue);background:rgba(88,166,255,.05)}
+.key-metric-card .km-name{font-size:10px;color:var(--text-dim);margin-bottom:3px}.key-metric-card .km-value{font-size:20px;font-weight:700}
+.key-metric-card .km-unit{font-size:11px;font-weight:400;color:var(--text-dim);margin-left:2px}
+.key-metric-card .km-benchmark{font-size:9px;color:var(--text-muted);margin-top:2px}
+.key-metric-card .km-status{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%}
+.key-metric-card .km-status.good{background:var(--green)}.key-metric-card .km-status.warn{background:var(--accent2)}.key-metric-card .km-status.bad{background:var(--red)}
+
+.metric-selector{display:flex;gap:4px;flex-wrap:wrap}.metric-chip{padding:5px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:10px;font-family:var(--font)}
+.metric-chip.selected{border-color:var(--blue);color:var(--blue);background:rgba(88,166,255,.08)}
+.metric-cat-title{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0 2px;width:100%}
+
+.import-hint{padding:8px 10px;background:#1a1f2b;border:1px solid var(--accent2);border-radius:6px;font-size:10px;color:var(--accent2);line-height:1.5}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:11px;color:var(--text-dim);z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%}
+.toast.show{opacity:1}
+</style></head><body>
+
+<nav><button id="nav-timer" class="active" onclick="sw('timer')">计时</button><button id="nav-stats" onclick="sw('stats')">统计</button><button id="nav-health" onclick="sw('health')">健康</button></nav>
+
+<div class="sysmon-bar">
+  <div class="sysmon-item">🍅 今日 <span class="sysmon-val" id="pomoV">0</span> 个</div>
+  <span class="ios-badge">iOS PWA</span>
+</div>
+
+<div class="presence-bar">
+  <div class="presence-dot"></div><span style="font-size:10px;color:var(--text-dim)">手动计时 · 每次专注结束强制休息</span>
+</div>
+
+<!-- ═══ Timer ═══ -->
+<div id="view-timer" class="view active"><div class="timer-wrap">
+  <div class="ring-container"><svg viewBox="0 0 180 180"><circle class="ring-bg" cx="90" cy="90" r="80"/><circle class="ring-progress" id="rProg" cx="90" cy="90" r="80" stroke-dasharray="502.65" stroke-dashoffset="0"/></svg>
+  <div class="timer-text"><div class="timer-time" id="tDisp">25:00</div><div class="timer-label" id="tLabel">专注</div></div></div>
+  <div class="timer-presets"><span class="current" onclick="sd(25*60)">25分</span><span onclick="sd(45*60)">45分</span><span onclick="sd(60*60)">60分</span><span class="sep">|</span><span onclick="sb(5*60)">休5</span><span onclick="sb(10*60)">休10</span></div>
+  <div class="timer-controls"><button onclick="rst()">↺</button><button class="primary" id="bStart" onclick="tt()">▶</button><button onclick="skp()">⏭</button></div>
+</div></div>
+
+<!-- ═══ Stats ═══ -->
+<div id="view-stats" class="view"><div class="view-content">
+  <div class="section-header"><h2>番茄统计</h2><div class="time-btns"><button onclick="ssr(7)">7天</button><button onclick="ssr(30)" class="sel">30天</button><button onclick="ssr(90)">90天</button></div></div>
+  <div class="kpi-grid" id="skpi"></div>
+  <div class="chart-panel" id="chF" style="height:200px"></div>
+  <div class="chart-legend"><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>番茄</div><div class="leg-item"><div class="leg-line" style="background:var(--rose)"></div>7日均线</div></div>
+  <div class="chart-panel" id="chW" style="height:180px"></div>
+  <div class="chart-legend"><div class="leg-item"><div class="leg-dot" style="background:var(--accent2)"></div>站立</div><div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div>正念</div><div class="leg-item"><div class="leg-dot" style="background:var(--rose)"></div>积极</div><div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>表情</div></div>
+</div></div>
+
+<!-- ═══ Health ═══ -->
+<div id="view-health" class="view"><div class="view-content">
+  <div class="section-header"><h2>健康仪表盘</h2><button onclick="document.getElementById('hf').click()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:10px;font-family:var(--font)">加载 JSON</button><input type="file" id="hf" accept=".json" style="display:none" onchange="lj(this)"></div>
+  <div class="import-hint" id="importHint">从 Mac 版导出 health.json 后在此加载。Mac 版右键菜单栏 → 导出健康数据缓存。</div>
+  <div class="key-metrics-grid" id="kmGrid"></div>
+  <div class="section-header"><h2 id="chTitle">步数</h2><div class="time-btns"><button onclick="shr(7)">7天</button><button onclick="shr(30)" class="sel">30天</button><button onclick="shr(90)">90天</button><button onclick="shr(365)">年</button></div></div>
+  <div class="chart-panel" id="chH" style="height:220px"></div>
+  <div class="chart-legend"><div class="leg-item"><div class="leg-dot" style="background:var(--text-muted)"></div>原始</div><div class="leg-item"><div class="leg-line" style="background:var(--accent2)"></div>7日均线</div><div class="leg-item"><div class="leg-line" style="background:var(--rose)"></div>30日均线</div><div class="leg-item"><div class="leg-band" style="background:var(--green)"></div>健康范围</div></div>
+  <div class="metric-cat-title">全部指标</div><div id="ms" class="metric-selector"></div>
+</div></div>
+
+<!-- Wellness -->
+<div class="wellness-overlay" id="wo"><div class="wellness-card"><h3>休息打卡</h3><p>完成了哪些微习惯？</p><div class="wellness-grid"><div class="wellness-item" data-key="stand" onclick="tw(this)">起身走动</div><div class="wellness-item" data-key="tidy" onclick="tw(this)">正向活动</div><div class="wellness-item" data-key="breathe" onclick="tw(this)">正念呼吸</div><div class="wellness-item" data-key="face" onclick="tw(this)">表情管理</div></div><button onclick="cw()">确认</button></div></div>
+
+<!-- Break -->
+<div class="force-break-overlay" id="fbo"><div class="force-break-card">
+  <h2>请休息一会儿</h2>
+  <div class="fb-timer" id="fbTimer">5:00</div>
+  <div class="fb-bar"><div class="fb-fill" id="fbFill" style="width:100%"></div></div>
+  <div class="fb-quote" id="fbQuote"></div>
+  <div class="fb-pomo" id="fbPomo">🍅 今日 0 个</div>
+  <div class="fb-info">休息是为了更好的工作。<br>倒计时结束前请休息一会，正念，走动，整理和调节。</div>
+  <button class="fb-done-btn" id="fbBtn" disabled onclick="endBreak()">请休息 5:00 后继续</button>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════ DATE HELPERS ═══════════════
+function ld(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function fd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+
+// ═══════════════ DATA ═══════════════
+let R=JSON.parse(localStorage.getItem('pm_ios')||'[]'),H={};
+const BM=[{type:"HKQuantityTypeIdentifierRestingHeartRate",label:"静息心率",unit:"bpm",low:50,high:80,optimal:60,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierHeartRateVariabilitySDNN",label:"心率变异性",unit:"ms",low:30,high:80,optimal:55,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierVO2Max",label:"最大摄氧量",unit:"mL/kg/min",low:35,high:50,optimal:42,category:"cardio",aggregate:"latest"},{type:"HKQuantityTypeIdentifierBloodPressureSystolic",label:"收缩压",unit:"mmHg",low:90,high:120,optimal:110,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierStepCount",label:"步数",unit:"步",low:7000,high:12000,optimal:10000,category:"activity",aggregate:"sum"},{type:"HKQuantityTypeIdentifierDistanceWalkingRunning",label:"步行距离",unit:"km",low:5,high:10,optimal:8,category:"activity",aggregate:"sum"},{type:"HKQuantityTypeIdentifierBodyMass",label:"体重",unit:"kg",low:56,high:76,optimal:66,category:"body",aggregate:"latest"},{type:"HKQuantityTypeIdentifierBodyMassIndex",label:"BMI",unit:"kg/m²",low:18.5,high:24.9,optimal:22,category:"body",aggregate:"latest"},{type:"HKQuantityTypeIdentifierOxygenSaturation",label:"血氧",unit:"%",low:95,high:100,optimal:98,category:"vitals",aggregate:"mean"},{type:"HKQuantityTypeIdentifierBloodGlucose",label:"血糖",unit:"mmol/L",low:3.9,high:6.1,optimal:5.2,category:"vitals",aggregate:"mean"},{type:"_sleep_actual",label:"实际睡眠",unit:"小时",low:6,high:9,optimal:7.5,category:"sleep",aggregate:"sum"},{type:"HKQuantityTypeIdentifierDietaryWater",label:"饮水",unit:"mL",low:1500,high:3000,optimal:2200,category:"other",aggregate:"sum"}];
+const bm={};BM.forEach(b=>{bm[b.type]=b});
+let sm='HKQuantityTypeIdentifierStepCount',hvd=30,svd=30;
+function sv(){localStorage.setItem('pm_ios',JSON.stringify(R))}
+
+// ═══════════════ HEALTH JSON IMPORT ═══════════════
+function lj(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);H=d;localStorage.setItem('pm_health_ios',JSON.stringify(d));dkm();bms();dhc();document.getElementById('importHint').style.display='none';toast('加载: '+Object.keys(d).filter(k=>k[0]!=='_').length+' 天')}catch(ex){toast('JSON格式错误')}};r.readAsText(f)}
+
+// ═══════════════ POMO COUNT ═══════════════
+function upc(){document.getElementById('pomoV').textContent=R.filter(r=>r.date===ld()).length;document.getElementById('fbPomo').textContent='🍅 今日 '+R.filter(r=>r.date===ld()).length+' 个'}
+
+// ═══════════════ TIMER ═══════════════
+let td=25*60,bd=5*60,tl=td,ib=false,rn=false,ti=null,cW=0,lb=0;
+const rc_=2*Math.PI*80,re=document.getElementById('rProg'),tds=document.getElementById('tDisp'),tlb=document.getElementById('tLabel'),bs=document.getElementById('bStart');
+function ft(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function rt_(){tds.textContent=ft(tl);const t=ib?bd:td;re.style.strokeDashoffset=rc_*(1-(1-tl/t));re.classList.toggle('break',ib);tlb.textContent=ib?'休息':'专注';upc()}
+function sd(s){if(rn)return;td=s;tl=s;ib=false;bs.classList.remove('break-mode');rt_()}function sb(s){if(!rn)bd=s}
+function tt(){rn?pt():st()}function st(){if(document.getElementById('fbo').classList.contains('show')){toast('休息中，请稍后');return};rn=true;bs.textContent='⏸';rt_();ti=setInterval(tk,1000)}
+function pt(){rn=false;bs.textContent='▶';clearInterval(ti);ti=null;rt_()}
+function rst(){pt();tl=td;ib=false;bs.classList.remove('break-mode');rt_()}
+function skp(){pt();if(ib&&tl>0)swp();tl=0;tk(true)}
+function tk(){
+  if(tl>0){tl--;rt_();return}
+  if(!ib){const today=ld();R.push({date:today,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}),duration:td,wellness:{}});sv();
+    let bm_=5;if(lb>0)bm_=(Date.now()/1000-lb)/60;if(bm_<5){cW+=td/60}else{cW=td/60}
+    ib=true;tl=bd;bs.classList.add('break-mode');pt();snb(bd)}
+  else{lb=Date.now()/1000;pt();swp()}rt_()}
+
+// ═══════════════ BREAK OVERLAY ═══════════════
+const QUOTES=["别人贪婪时我恐惧，别人恐惧时我贪婪。——巴菲特","价格是你付出的，价值是你得到的。——巴菲特","最好的投资就是投资自己。——巴菲特","时间是优秀企业的朋友。——巴菲特","简单比复杂更难。——乔布斯","Stay hungry, stay foolish.——乔布斯","你的时间有限，不要浪费在过别人的生活上。——乔布斯","活着就是为了改变世界。——乔布斯","反过来想，总是反过来想。——查理·芒格","要得到你想要的，最可靠的办法是让自己配得上它。——查理·芒格","我这辈子遇到的聪明人没有一个不每天阅读的。——查理·芒格","当一件事足够重要时，即使胜算不大，你也要去做。——马斯克","坚持非常重要。除非你选择放弃，否则你永远不会失败。——马斯克","失败是一种选项。如果你没有失败过，那说明你还不够创新。——马斯克","给岁月以文明，而不是给文明以岁月。——刘慈欣《三体》","弱小和无知不是生存的障碍，傲慢才是。——刘慈欣《三体》","前进！前进！不择手段地前进！——刘慈欣《三体》","我们都是阴沟里的虫子，但总得有人仰望星空。——刘慈欣","毁灭你，与你有何相干？——刘慈欣","宇宙就是一片黑暗森林。——刘慈欣","失去人性，失去很多；失去兽性，失去一切。——刘慈欣","唯一不可阻挡的是时间。——刘慈欣","给时光以生命，给岁月以文明。——刘慈欣","光锥之内，皆是命运。——刘慈欣","以合理的价格买入优秀的公司。——巴菲特","风险来自于你不知道自己在做什么。——巴菲特","别人贪婪时我恐惧，别人恐惧时我贪婪。——巴菲特","潮水退去才知道谁在裸泳。——巴菲特","我从不试图跳过七英尺的栏杆。——巴菲特","你不需要成为每一家公司的专家。——巴菲特","建立声誉需要二十年，毁掉它只需要五分钟。——巴菲特","创新就是把各种事物整合到一起的能力。——乔布斯","设计不仅仅是外观和感觉，设计是它如何工作。——乔布斯","把每一天当作生命中的最后一天来过。——乔布斯","那些疯狂到以为自己能改变世界的人，才能真正改变世界。——乔布斯","决定不做什么和决定做什么同样重要。——乔布斯","我愿意用我所有的科技去换取和苏格拉底共处一个下午。——乔布斯","人生短暂，不要为别人而活。——乔布斯","我们存在的意义是在宇宙中留下一个印记。——乔布斯","不要被教条所限。——乔布斯","质量比数量重要。一个全垒打比两个二垒安打好得多。——乔布斯","获得一件东西最好的方式是让自己配得上它。——查理·芒格","如果我不能比这个世界上最聪明的人更能反驳我自己的观点，我就不配拥有这个观点。——查理·芒格","永远不要把你不理解的东西。——查理·芒格","破产有三种方式：最快的是酒精，最愉快的是杠杆。——查理·芒格","知道你不知道的事情，比聪明更有用。——查理·芒格","理性不是一种你不需要努力就能获得的东西。——查理·芒格","如果你一直保持学习和思考，你就能在大多数事情上超越大多数人。——查理·芒格","我们从来不认为我们聪明到可以不用学习。——查理·芒格","我不是天才。我只是在某些事情上很聪明，而且我只待在这些领域。——查理·芒格","你生命中的每一次不幸，都是一个努力的机会。——查理·芒格","独立思考，不要让别人的想法左右你的判断。——马斯克","努力工作。如果你在做一件重要的事情，每周工作80到100小时。——马斯克","如果你想要成功，你必须愿意承担风险。——马斯克","物理学是从第一性原理推理的好方法。——马斯克","伟大和舒适永远不会共存。——马斯克","如果你需要鼓励的话，不要创业。——马斯克","创业就像嚼着玻璃凝视深渊。——马斯克","只做对的事情，而不是做容易的事情。——马斯克","我宁愿错误地乐观，也不愿正确地悲观。——马斯克","宇宙很大，生活更大，我们一定还能再相见。——刘慈欣","死亡是一座永恒的灯塔。——刘慈欣","在中国，任何超脱飞扬的思想都会砰然坠地的。——刘慈欣","越透明的东西越神秘，宇宙本身就是透明的。——刘慈欣","空不是无，空是一种存在。——刘慈欣","给时光以生命，给岁月以文明。——刘慈欣","人类之所以能够在这个世界上生存下来，靠的就是理性和科学。——刘慈欣","如果大山不会走向穆罕默德，穆罕默德可以走向大山。——刘慈欣","宇宙的规律中，最简单的一条就是：如果你不发展，你就会灭亡。——刘慈欣","我们都是星辰。——刘慈欣","地球生命真的是宇宙中偶然里的偶然。——刘慈欣","宇宙如此宏大，生命如此脆弱，文明如此珍贵。——刘慈欣"];
+let fbTimer=null,fbRemain=0;
+function rq(){return QUOTES[Math.floor(Math.random()*QUOTES.length)]}
+function snb(sec){fbRemain=sec;document.getElementById('fbo').classList.add('show');document.getElementById('fbTimer').classList.remove('done');document.getElementById('fbQuote').textContent='「'+rq()+'」';upc();ufb()}
+function ufb(){document.getElementById('fbTimer').textContent=ft(fbRemain);document.getElementById('fbFill').style.width=(fbRemain/bd*100)+'%';const btn=document.getElementById('fbBtn');if(fbRemain<=0){btn.disabled=false;btn.textContent='✅ 休息完成，继续工作';document.getElementById('fbTimer').classList.add('done')}else{btn.disabled=true;btn.textContent='请休息 '+ft(fbRemain)+' 后继续'}upc()}
+function endBreak(){if(fbRemain>0)return;document.getElementById('fbo').classList.remove('show');if(fbTimer){clearInterval(fbTimer);fbTimer=null}document.getElementById('fbTimer').classList.remove('done');cW=0;lb=Date.now()/1000;swp()}
+
+// ═══════════════ WELLNESS ═══════════════
+let wc={};function swp(){wc={};document.querySelectorAll('.wellness-item').forEach(e=>e.classList.remove('checked'));document.getElementById('wo').classList.add('show')}
+function tw(el){el.classList.toggle('checked');const k=el.dataset.key;if(el.classList.contains('checked'))wc[k]=true;else delete wc[k]}
+function cw(){document.getElementById('wo').classList.remove('show');if(R.length>0&&Object.keys(R[R.length-1].wellness||{}).length===0){R[R.length-1].wellness={...wc};sv()}ib=false;tl=td;bs.classList.remove('break-mode');rn=false;bs.textContent='▶';clearInterval(ti);ti=null;rt_();ds_()}
+
+// ═══════════════ VIEWS ═══════════════
+function sw(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));document.getElementById('view-'+v).classList.add('active');document.getElementById('nav-'+v).classList.add('active');if(v==='stats')ds_();if(v==='health'){dkm();bms();dhc()}}
+
+// ═══════════════ STATS ═══════════════
+function ssr(d){svd=d;ds_()}function ds_(){dsk_();dfc_();dwc_()}
+function dsk_(){const n=new Date(),ts=fd(n),ws=new Date(n);ws.setDate(n.getDate()-n.getDay());const t=R.filter(r=>r.date===ts),w=R.filter(r=>r.date>=fd(ws)),m=R.reduce((s,r)=>s+(r.duration||0),0)/60;document.getElementById('skpi').innerHTML=`<div class="kpi"><div class="kpi-val">${t.length}</div><div class="kpi-label">今日</div></div><div class="kpi"><div class="kpi-val">${w.length}</div><div class="kpi-label">本周</div></div><div class="kpi"><div class="kpi-val">${R.length}</div><div class="kpi-label">总计</div></div><div class="kpi"><div class="kpi-val">${Math.round(m)}</div><div class="kpi-label">总专注(分)</div></div>`}
+function ag(d,vd){if(vd===0)vd=10000;const c=new Date();c.setDate(c.getDate()-vd);const cs=fd(c),f=d.filter(x=>x.date>=cs),bd_={};f.forEach(x=>{bd_[x.date]=(bd_[x.date]||0)+1});let e=Object.entries(bd_).sort();if(e.length===0)return[];if(vd<=30)return e;const ml={};e.forEach(([dt,v])=>{const mk=dt.slice(0,7);if(!ml[mk])ml[mk]={s:0,n:0};ml[mk].s+=v;ml[mk].n++});return Object.entries(ml).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10])}
+function cma_(d,p){return d.map((_,i)=>{const s=d.slice(Math.max(0,i-p+1),i+1);return[d[i][0],Math.round(s.reduce((a,b)=>a+b[1],0)/s.length*10)/10]})}
+function dsc_(cid,sl,opts={}){
+  const ct=document.getElementById(cid);if(!ct)return;const W=Math.min(ct.clientWidth-2,600),H=ct.clientHeight-2,pl=42,pr=12,pt_=12,pb_=36,pW=W-pl-pr,pH=H-pt_-pb_;
+  let av=[],al=[];sl.forEach(s=>s.data.forEach(d=>{av.push(d[1]);al.push(d[0])}));al=[...new Set(al)].sort();
+  if(av.length===0){ct.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">暂无数据</div>';return}
+  let ym=Math.min(...av),yM=Math.max(...av),r_=yM-ym||1;ym=Math.max(0,ym-r_*.12);yM=yM+r_*.15;
+  if(opts.refLow!=null){ym=Math.min(ym,opts.refLow*.85);yM=Math.max(yM,opts.refHigh*1.15)}
+  const ys=v=>pt_+pH*(1-(v-ym)/(yM-ym)),xs=(l,i)=>al.length<=1?pl+pW/2:pl+(pW*i)/(al.length-1);
+  let svg=`<svg width="${W}" height="${H}" style="background:#0d1117">`;
+  if(opts.refLow!=null){const yl=ys(opts.refLow),yh=ys(opts.refHigh);svg+=`<rect x="${pl}" y="${yh}" width="${pW}" height="${yl-yh}" fill="${opts.refColor||'#3fb950'}" fill-opacity="0.06"/><line x1="${pl}" x2="${W-pr}" y1="${yl}" y2="${yl}" stroke="${opts.refColor||'#3fb950'}" stroke-width="0.6" stroke-dasharray="3 2" opacity="0.3"/><line x1="${pl}" x2="${W-pr}" y1="${yh}" y2="${yh}" stroke="${opts.refColor||'#3fb950'}" stroke-width="0.6" stroke-dasharray="3 2" opacity="0.3"/>`}
+  for(let i=0;i<=4;i++){const v=ym+(yM-ym)*i/4,y=ys(v);svg+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#21262d" stroke-width="0.4"/><text x="${pl-4}" y="${y+3}" fill="#484f58" font-size="8" text-anchor="end">${fa_(v)}</text>`}
+  const xs2=Math.max(1,Math.floor(al.length/5));for(let i=0;i<al.length;i+=xs2){const l=al[i];svg+=`<text x="${xs(l,i)}" y="${H-pb_+14}" fill="#8b949e" font-size="9" text-anchor="middle">${l.length>7?l.slice(5):l}</text>`}
+  svg+=`<line x1="${pl}" x2="${W-pr}" y1="${ys(ym)}" y2="${ys(ym)}" stroke="#30363d" stroke-width="0.6"/>`;
+  const cs_=opts.colors||['#8b949e','#d29922','#db61a2'];sl.forEach((s,si)=>{const c=cs_[si%cs_.length];const pts=s.data.map((d,i)=>`${xs(d[0],al.indexOf(d[0]))},${ys(d[1])}`);if(pts.length>1)svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${s.width||1.3}" stroke-linejoin="round" stroke-linecap="round"/>`;if(s.type==='scatter'&&s.data.length<=60)s.data.forEach(d=>{svg+=`<circle cx="${xs(d[0],al.indexOf(d[0]))}" cy="${ys(d[1])}" r="1.5" fill="${c}" opacity="0.5"/>`})});
+  svg+='</svg>';ct.innerHTML=svg
+}
+function fa_(v){if(v>=10000)return(v/1000).toFixed(0)+'k';if(v>=1000)return(v/1000).toFixed(1)+'k';return v%1===0?Math.round(v).toString():v.toFixed(1)}
+function dfc_(){const a=ag(R.map(r=>[r.date,1]),svd);if(a.length===0){document.getElementById('chF').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">暂无记录</div>';return}dsc_('chF',[{data:a,type:'scatter',width:0},{data:cma_(a,7),width:1.5}],{colors:['#8b949e','#db61a2']})}
+function dwc_(){const ks=['stand','breathe','tidy','face'],abd={};R.forEach(r=>{const w_=r.wellness||{};ks.forEach(k=>{if(w_[k]){if(!abd[k])abd[k]={};abd[k][r.date]=(abd[k][r.date]||0)+1}})});dsc_('chW',ks.map(k=>({data:Object.entries(abd[k]||{}).sort()})),{colors:['#d29922','#39c5cf','#db61a2','#3fb950']})}
+
+// ═══════════════ KEY METRICS ═══════════════
+const KM=['HKQuantityTypeIdentifierBodyMass','HKQuantityTypeIdentifierBloodPressureSystolic','HKQuantityTypeIdentifierVO2Max','HKQuantityTypeIdentifierDistanceWalkingRunning','HKQuantityTypeIdentifierHeartRateVariabilitySDNN','HKQuantityTypeIdentifierRestingHeartRate'];
+function dkm(){const ct=document.getElementById('kmGrid');if(!ct||Object.keys(H).length===0){ct.innerHTML='';return}const days=Object.keys(H).filter(d=>d>='2020').sort(),r7=days.slice(-7),r30=days.slice(-30);let h='';for(const t of KM){const b=bm[t];if(!b)continue;let v7=[],v30=[];r7.forEach(d=>{const v=H[d]?.[t];if(v!=null)v7.push(v)});r30.forEach(d=>{const v=H[d]?.[t];if(v!=null)v30.push(v)});const cur=v7.length>0?v7[v7.length-1]:(v30.length>0?v30[v30.length-1]:null);let st='good';if(cur!=null&&b.low!=null&&b.high!=null){if(cur<b.low||cur>b.high)st='bad';else if(b.optimal!=null&&Math.abs(cur-b.optimal)>(b.high-b.low)*.2)st='warn'}h+=`<div class="key-metric-card${t===sm?' selected':''}" onclick="skm_('${t}')"><div class="km-status ${st}"></div><div class="km-name">${b.label}</div><div class="km-value">${cur!=null?cur:'--'}<span class="km-unit">${b.unit}</span></div><div class="km-benchmark">参考 ${b.low}-${b.high}</div></div>`}ct.innerHTML=h}
+function skm_(t){sm=t;document.getElementById('chTitle').textContent=bm[t]?.label||t;dkm();dhc()}
+function bms(){const cats={cardio:'心血管',activity:'活动',body:'身体',sleep:'睡眠',vitals:'生命体征',other:'其他'};let h='';const seen=new Set();for(const[t,b]of Object.entries(bm)){if(!seen.has(b.category)){seen.add(b.category);h+=`<div class="metric-cat-title">${cats[b.category]||b.category}</div>`}h+=`<button class="metric-chip${t===sm?' selected':''}" onclick="skm_('${t}')">${b.label}</button>`}document.getElementById('ms').innerHTML=h}
+function shr(d){hvd=d;dhc()}
+function dhc(){if(Object.keys(H).length===0){document.getElementById('chH').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">请加载健康数据</div>';return}const b=bm[sm];if(!b)return;const days=Object.keys(H).filter(d=>d>='2020').sort(),c=new Date();if(hvd>0)c.setDate(c.getDate()-hvd);const cs=fd(c),f=hvd===0?days:days.filter(d=>d>=cs);let raw=f.map(d=>[d,H[d]?.[sm]||null]).filter(d=>d[1]!=null);let ag_=raw;if(hvd>90){const m={};raw.forEach(([d,v])=>{const mk=d.slice(0,7);if(!m[mk])m[mk]={s:0,n:0};m[mk].s+=v;m[mk].n++});ag_=Object.entries(m).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10]).sort()}dsc_('chH',[{data:ag_,type:'scatter',width:0},{data:cma_(ag_,7),width:1.3},{data:cma_(ag_,30),width:1.3}],{colors:['#484f58','#d29922','#db61a2'],refLow:b.low,refHigh:b.high,refOptimal:b.optimal,refColor:'#3fb950',optColor:'#58a6ff'})}
+
+// ═══════════════ TOAST ═══════════════
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3000)}
+
+// ═══════════════ INIT ═══════════════
+try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
+let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
+rt_();
+</script></body></html>
