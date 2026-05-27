@@ -318,4 +318,17 @@ const origSave=sv;sv=function(){origSave();if(syncEnabled){clearTimeout(syncThro
 
 setTimeout(()=>{doFullSync();startPeriodicSync()},4000);
 const syncBadge=document.getElementById('syncBadge');updateSyncBadge();syncBadge.addEventListener('click',showSyncModal);
+
+// Init
+try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
+let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
+rt_();up();
+
+// iOS auto-start: open app → start; switch away → pause; come back → resume
+let wasRunningBeforeHidden=true;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){wasRunningBeforeHidden=rn;if(rn)pt()}
+  else{if(wasRunningBeforeHidden&&!document.getElementById('fbo').classList.contains('show'))st()}
+});
+setTimeout(()=>{if(!rn&&!document.getElementById('fbo').classList.contains('show'))st()},1000);
 </script></body></html>
