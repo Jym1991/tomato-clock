@@ -168,14 +168,14 @@ function ld(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+
 function fd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 
 // ═══════════════ DATA ═══════════════
-let R=JSON.parse(localStorage.getItem('pm_ios')||'[]'),H={};
+let R=JSON.parse(localStorage.getItem('pm_v7')||'[]'),H={};
 const BM=[{type:"HKQuantityTypeIdentifierRestingHeartRate",label:"静息心率",unit:"bpm",low:50,high:80,optimal:60,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierHeartRateVariabilitySDNN",label:"心率变异性",unit:"ms",low:30,high:80,optimal:55,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierVO2Max",label:"最大摄氧量",unit:"mL/kg/min",low:35,high:50,optimal:42,category:"cardio",aggregate:"latest"},{type:"HKQuantityTypeIdentifierBloodPressureSystolic",label:"收缩压",unit:"mmHg",low:90,high:120,optimal:110,category:"cardio",aggregate:"mean"},{type:"HKQuantityTypeIdentifierStepCount",label:"步数",unit:"步",low:7000,high:12000,optimal:10000,category:"activity",aggregate:"sum"},{type:"HKQuantityTypeIdentifierDistanceWalkingRunning",label:"步行距离",unit:"km",low:5,high:10,optimal:8,category:"activity",aggregate:"sum"},{type:"HKQuantityTypeIdentifierBodyMass",label:"体重",unit:"kg",low:56,high:76,optimal:66,category:"body",aggregate:"latest"},{type:"HKQuantityTypeIdentifierBodyMassIndex",label:"BMI",unit:"kg/m²",low:18.5,high:24.9,optimal:22,category:"body",aggregate:"latest"},{type:"HKQuantityTypeIdentifierOxygenSaturation",label:"血氧",unit:"%",low:95,high:100,optimal:98,category:"vitals",aggregate:"mean"},{type:"HKQuantityTypeIdentifierBloodGlucose",label:"血糖",unit:"mmol/L",low:3.9,high:6.1,optimal:5.2,category:"vitals",aggregate:"mean"},{type:"_sleep_actual",label:"实际睡眠",unit:"小时",low:6,high:9,optimal:7.5,category:"sleep",aggregate:"sum"},{type:"HKQuantityTypeIdentifierDietaryWater",label:"饮水",unit:"mL",low:1500,high:3000,optimal:2200,category:"other",aggregate:"sum"}];
 const bm={};BM.forEach(b=>{bm[b.type]=b});
 let sm='HKQuantityTypeIdentifierStepCount',hvd=30,svd=30;
-function sv(){localStorage.setItem('pm_ios',JSON.stringify(R))}
+function sv(){localStorage.setItem('pm_v7',JSON.stringify(R))}
 
 // ═══════════════ HEALTH JSON IMPORT ═══════════════
-function lj(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);H=d;localStorage.setItem('pm_health_ios',JSON.stringify(d));dkm();bms();dhc();document.getElementById('importHint').style.display='none';toast('加载: '+Object.keys(d).filter(k=>k[0]!=='_').length+' 天')}catch(ex){toast('JSON格式错误')}};r.readAsText(f)}
+function lj(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);H=d;localStorage.setItem('pm_health_v7',JSON.stringify(d));dkm();bms();dhc();document.getElementById('importHint').style.display='none';toast('加载: '+Object.keys(d).filter(k=>k[0]!=='_').length+' 天')}catch(ex){toast('JSON格式错误')}};r.readAsText(f)}
 
 // XML import (regex-based, memory-efficient)
 // All 29 metric types — use full identifiers as output keys
@@ -198,7 +198,7 @@ function lx(i){const f=i.files[0];if(!f)return;const sizeMB=(f.size/1048576).toF
       offset+=chunkSize;const pct=Math.round(offset/f.size*100);document.getElementById('parseProg').textContent='解析中 '+pct+'% ('+Object.keys(dayData).length+'天, '+(recordCount/10000).toFixed(1)+'万条)';setTimeout(readNext,10)};
     reader.readAsText(slice)}
   function finishParse(){Object.keys(dayData).forEach(day=>{const d=dayData[day];Object.keys(d).forEach(k=>{if(k.endsWith('_c')){const base=k.slice(0,-2);d[base]=Math.round(d[base+'_s']/d[k]*10)/10;delete d[base+'_s'];delete d[k]}if(k.endsWith('_ts'))delete d[k]})});
-    H=dayData;try{localStorage.setItem('pm_health_ios',JSON.stringify(H))}catch(e){toast('数据太大，建议用Mac版导出JSON')}
+    H=dayData;try{localStorage.setItem('pm_health_v7',JSON.stringify(H))}catch(e){toast('数据太大，建议用Mac版导出JSON')}
     document.getElementById('importHint').style.display='none';document.getElementById('parseProg').style.display='none';
     dkm();bms();dhc();toast('导入完成: '+recordCount.toLocaleString()+'条, '+Object.keys(H).length+'天')}
   readNext()}
@@ -244,7 +244,7 @@ function ssr(d){svd=d;ds_()}function ds_(){dsk_();dfc_();dwc_()}
 
 // Data sync: Export / Import + GitHub auto-sync
 function exportData(){const data={version:6,date:ld(),records:R,health:Object.keys(H).length>0?H:null};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pomodoro_backup_'+ld()+'.json';a.click();URL.revokeObjectURL(url);toast('数据已导出')}
-function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
+function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_v7',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
 
 // === GitHub Sync v2: pull→merge→push cycle, periodic auto-sync ===
 let SYNC_USER=localStorage.getItem('sync_user')||'',SYNC_TOKEN=localStorage.getItem('sync_token')||'';
@@ -295,10 +295,10 @@ async function doFullSync(){
     for(const r of all){const key=r.date+'_'+r.time;if(!seen.has(key)){seen.add(key);merged.push(r)}}
     merged.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
     const newCount=merged.length-R.length;
-    if(newCount!==0){R=merged;localStorage.setItem('pm_ios',JSON.stringify(R));upc();ds_()}
+    if(newCount!==0){R=merged;localStorage.setItem('pm_v7',JSON.stringify(R));upc();ds_()}
     // 3. Health: latest wins
     if(remoteHealth&&Object.keys(remoteHealth).length>0){
-      if(!H._me||(remoteHealth._parseDate||'')>(H._parseDate||'')){H=remoteHealth;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}
+      if(!H._me||(remoteHealth._parseDate||'')>(H._parseDate||'')){H=remoteHealth;localStorage.setItem('pm_health_v7',JSON.stringify(H));dkm();bms();dhc()}
     }
     // 4. Push merged data
     if(newCount!==0||remoteRecords.length!==R.length){
@@ -320,7 +320,7 @@ setTimeout(()=>{doFullSync();startPeriodicSync()},4000);
 const syncBadge=document.getElementById('syncBadge');updateSyncBadge();syncBadge.addEventListener('click',showSyncModal);
 
 // Init
-try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem('pm_health_v7')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
 let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
 rt_();up();
 
