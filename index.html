@@ -122,7 +122,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);box-sha
 
 <!-- ═══ Stats ═══ -->
 <div id="view-stats" class="view"><div class="view-content">
-  <div class="section-header"><h2>番茄统计</h2><div class="time-btns"><button onclick="ssr(7)">7天</button><button onclick="ssr(30)" class="sel">30天</button><button onclick="ssr(90)">90天</button></div></div>
+  <div class="section-header"><h2>番茄统计</h2><div style="display:flex;gap:4px"><div class="time-btns"><button onclick="ssr(7)">7天</button><button onclick="ssr(30)" class="sel">30天</button><button onclick="ssr(90)">90天</button></div><button onclick="exportData()" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:10px;font-family:var(--font)">导出</button><button onclick="document.getElementById('impF').click()" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);cursor:pointer;font-size:10px;font-family:var(--font)">导入</button></div><input type="file" id="impF" accept=".json" style="display:none" onchange="importData(this)"></div>
   <div class="kpi-grid" id="skpi"></div>
   <div class="chart-panel" id="chF" style="height:200px"></div>
   <div class="chart-legend"><div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>番茄</div><div class="leg-item"><div class="leg-line" style="background:var(--rose)"></div>7日均线</div></div>
@@ -237,6 +237,10 @@ function sw(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove(
 
 // ═══════════════ STATS ═══════════════
 function ssr(d){svd=d;ds_()}function ds_(){dsk_();dfc_();dwc_()}
+
+// Data sync: Export / Import
+function exportData(){const data={version:6,date:ld(),records:R,health:Object.keys(H).length>0?H:null};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pomodoro_backup_'+ld()+'.json';a.click();URL.revokeObjectURL(url);toast('数据已导出')}
+function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
 function dsk_(){const n=new Date(),ts=fd(n),ws=new Date(n);ws.setDate(n.getDate()-n.getDay());const t=R.filter(r=>r.date===ts),w=R.filter(r=>r.date>=fd(ws)),m=R.reduce((s,r)=>s+(r.duration||0),0)/60;document.getElementById('skpi').innerHTML=`<div class="kpi"><div class="kpi-val">${t.length}</div><div class="kpi-label">今日</div></div><div class="kpi"><div class="kpi-val">${w.length}</div><div class="kpi-label">本周</div></div><div class="kpi"><div class="kpi-val">${R.length}</div><div class="kpi-label">总计</div></div><div class="kpi"><div class="kpi-val">${Math.round(m)}</div><div class="kpi-label">总专注(分)</div></div>`}
 function ag(d,vd){if(vd===0)vd=10000;const c=new Date();c.setDate(c.getDate()-vd);const cs=fd(c),f=d.filter(x=>x.date>=cs),bd_={};f.forEach(x=>{bd_[x.date]=(bd_[x.date]||0)+1});let e=Object.entries(bd_).sort();if(e.length===0)return[];if(vd<=30)return e;const ml={};e.forEach(([dt,v])=>{const mk=dt.slice(0,7);if(!ml[mk])ml[mk]={s:0,n:0};ml[mk].s+=v;ml[mk].n++});return Object.entries(ml).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10])}
 function cma_(d,p){return d.map((_,i)=>{const s=d.slice(Math.max(0,i-p+1),i+1);return[d[i][0],Math.round(s.reduce((a,b)=>a+b[1],0)/s.length*10)/10]})}
