@@ -243,13 +243,17 @@ function exportData(){const data={version:6,date:ld(),records:R,health:Object.ke
 function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
 
 // GitHub Auto-Sync (seamless multi-device)
-const SYNC_URL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync.json';
+const SYNC_USER=localStorage.getItem('sync_user')||'';
 const SYNC_TOKEN=localStorage.getItem('sync_token')||'';
-let syncEnabled=!!SYNC_TOKEN,pushThrottle=null;
+const SYNC_URL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+SYNC_USER+'.json';
+let syncEnabled=!!(SYNC_TOKEN&&SYNC_USER),pushThrottle=null;
 function setupSync(){
-  const token=prompt('请输入 GitHub Personal Access Token 以启用多设备无缝同步：\n\n（在 https://github.com/settings/tokens 创建，勾选 repo 权限）\n\n留空则取消同步');
+  const name=prompt('设置你的用户名（用于多用户数据隔离）：',SYNC_USER||'');
+  if(!name)return;
+  localStorage.setItem('sync_user',name);
+  const token=prompt('请输入 GitHub Token（在 https://github.com/settings/tokens 创建，勾选 repo）：');
   if(token&&token.startsWith('ghp_')){localStorage.setItem('sync_token',token);location.reload()}
-  else if(token){alert('Token 格式不正确，应以 ghp_ 开头')}
+  else if(token){alert('Token 格式不正确')}
 }
 
 // Pull from GitHub on load (no auth needed for public repos)
@@ -324,7 +328,7 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 // ═══════════════ INIT ═══════════════
 try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
 let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
-document.getElementById('syncBadge').textContent=syncEnabled?'☁️ 同步中':'☁️ 设置同步';
+document.getElementById('syncBadge').textContent=syncEnabled?'☁️ '+SYNC_USER:'☁️ 设置同步';
 rt_();
 // Auto start/pause on visibility change (iOS foreground/background)
 let wasRunningBeforeHidden=true; // assume was running so first open auto-starts
