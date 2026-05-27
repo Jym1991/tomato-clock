@@ -110,7 +110,7 @@ nav button.active{color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
 </div>
 
 <div class="presence-bar">
-  <div class="presence-dot"></div><span style="font-size:10px;color:var(--text-dim)">从容节奏 · 健康生活（云程奇点）</span>
+  <div class="presence-dot"></div><span style="font-size:13px;color:var(--text-dim);letter-spacing:.5px">从容节奏 · 健康生活 · 云程奇点</span>
 </div>
 
 <!-- ═══ Timer ═══ -->
@@ -251,7 +251,7 @@ let SYNC_USER=localStorage.getItem('sync_user')||'',SYNC_TOKEN=localStorage.getI
 let syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+SYNC_USER+'.json';
 let syncEnabled=!!(SYNC_TOKEN&&SYNC_USER),pushThrottle=null;
 function showSyncModal(){document.getElementById('syncUserInp').value=SYNC_USER;document.getElementById('syncTokenInp').value=SYNC_TOKEN;document.getElementById('logoutSyncBtn').style.display=syncEnabled?'block':'none';document.getElementById('syncModal').classList.add('show')}
-function confirmSync(){const u=document.getElementById('syncUserInp').value.trim();const t=document.getElementById('syncTokenInp').value.trim();if(!u){alert('请输入用户名');return}if(!t||!t.startsWith('ghp_')){alert('Token 应以 ghp_ 开头');return}localStorage.setItem('sync_user',u);localStorage.setItem('sync_token',t);SYNC_USER=u;SYNC_TOKEN=t;syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+u+'.json';syncEnabled=true;updateSyncBadge();document.getElementById('syncModal').classList.remove('show');pullSync();toast('同步已启用')}
+function confirmSync(){const u=document.getElementById('syncUserInp').value.trim();const t=document.getElementById('syncTokenInp').value.trim();if(!u){alert('请输入用户名');return}if(!t||!t.startsWith('ghp_')){alert('Token 应以 ghp_ 开头');return}localStorage.setItem('sync_user',u);localStorage.setItem('sync_token',t);SYNC_USER=u;SYNC_TOKEN=t;syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+u+'.json';syncEnabled=true;updateSyncBadge();document.getElementById('syncModal').classList.remove('show');pullSync();if(R.length>0)pushSync();toast('同步已启用'+(R.length>0?' · 推送 '+R.length+' 条记录':''))}
 function logoutSync(){localStorage.removeItem('sync_user');localStorage.removeItem('sync_token');SYNC_USER='';SYNC_TOKEN='';syncEnabled=false;updateSyncBadge();document.getElementById('syncModal').classList.remove('show');toast('已退出同步，数据保留在本地')}
 function updateSyncBadge(){const b=document.getElementById('syncBadge');b.textContent=syncEnabled?'☁️ '+SYNC_USER:'☁️ 设置同步'}
 
