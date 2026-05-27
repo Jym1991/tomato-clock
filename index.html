@@ -275,7 +275,7 @@ function logoutSync(){
   updateSyncBadge();document.getElementById('syncModal').classList.remove('show');
   toast('已退出同步，数据保留本地')
 }
-function updateSyncBadge(){const b=document.getElementById('syncBadge');const last=localStorage.getItem('sync_last')||'';b.textContent=syncEnabled?'☁️ '+SYNC_USER+(last?' · '+last:''):'☁️ 设置同步'}
+function updateSyncBadge(){const b=document.getElementById('syncBadge');const last=localStorage.getItem('sync_last')||'';b.textContent=syncEnabled?'☁️ '+SYNC_USER:'☁️ 设置同步'}
 function forceSyncNow(){doFullSync();toast('正在同步...')}
 function startPeriodicSync(){if(syncInterval)clearInterval(syncInterval);syncInterval=setInterval(doFullSync,60000)} // every 60s
 
