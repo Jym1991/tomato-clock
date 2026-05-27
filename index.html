@@ -274,4 +274,11 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
 let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
 rt_();
+// Auto start/pause on visibility change (iOS foreground/background)
+let wasRunningBeforeHidden=true; // assume was running so first open auto-starts
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){wasRunningBeforeHidden=rn;if(rn)pt()}else{if(wasRunningBeforeHidden&&!document.getElementById('fbo').classList.contains('show')){st()}}
+});
+// Auto-start on first open
+setTimeout(()=>{if(!rn&&!document.getElementById('fbo').classList.contains('show'))st()},800);
 </script></body></html>
