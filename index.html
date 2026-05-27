@@ -246,64 +246,77 @@ function ssr(d){svd=d;ds_()}function ds_(){dsk_();dfc_();dwc_()}
 function exportData(){const data={version:6,date:ld(),records:R,health:Object.keys(H).length>0?H:null};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pomodoro_backup_'+ld()+'.json';a.click();URL.revokeObjectURL(url);toast('数据已导出')}
 function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
 
-// GitHub Auto-Sync (multi-device + health data)
+// === GitHub Sync v2: pull→merge→push cycle, periodic auto-sync ===
 let SYNC_USER=localStorage.getItem('sync_user')||'',SYNC_TOKEN=localStorage.getItem('sync_token')||'';
 let syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+SYNC_USER+'.json';
-let syncEnabled=!!(SYNC_TOKEN&&SYNC_USER),pushThrottle=null;
-function showSyncModal(){document.getElementById('syncUserInp').value=SYNC_USER;document.getElementById('syncTokenInp').value=SYNC_TOKEN;document.getElementById('logoutSyncBtn').style.display=syncEnabled?'block':'none';document.getElementById('syncModal').classList.add('show')}
-function confirmSync(){const u=document.getElementById('syncUserInp').value.trim();const t=document.getElementById('syncTokenInp').value.trim();if(!u){alert('请输入用户名');return}if(!t||!t.startsWith('ghp_')){alert('Token 应以 ghp_ 开头');return}localStorage.setItem('sync_user',u);localStorage.setItem('sync_token',t);SYNC_USER=u;SYNC_TOKEN=t;syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+u+'.json';syncEnabled=true;updateSyncBadge();document.getElementById("logoutSyncBtn").style.display="block";document.getElementById("forceSyncBtn").style.display="block";document.getElementById("syncModal").classList.remove("show");pullSync();if(R.length>0)pushSync();toast('同步已启用'+(R.length>0?' · 推送 '+R.length+' 条记录':''))}
-function forceSyncNow(){pullSync().then(()=>{if(R.length>0)pushSync();toast("同步完成")})}
-function forceSyncNow(){pullSync().then(()=>{if(R.length>0)pushSync();toast('同步完成')})}
-function logoutSync(){localStorage.removeItem('sync_user');localStorage.removeItem('sync_token');SYNC_USER='';SYNC_TOKEN='';syncEnabled=false;updateSyncBadge();document.getElementById('syncModal').classList.remove('show');toast('已退出同步，数据保留在本地')}
-function updateSyncBadge(){const b=document.getElementById('syncBadge');const last=localStorage.getItem('sync_last')||'';b.textContent=syncEnabled?'☁️ '+SYNC_USER+(last?' · '+last:''):'☁️ 设置同步'}
+let syncEnabled=!!(SYNC_TOKEN&&SYNC_USER),syncThrottle=null,syncInterval=null;
 
-async function pullSync(){if(!syncEnabled)return;try{const resp=await fetch(syncURL,{headers:{Accept:'application/vnd.github.v3+json'}});if(!resp.ok)return;const d=await resp.json();const content=JSON.parse(atob(d.content));if(content.records){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=content.records.filter(r=>!exist.has(r.date+'_'+r.time));if(added.length>0){R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));localStorage.setItem('pm_ios',JSON.stringify(R));upc()}}if(content.health&&Object.keys(content.health).length>0){if(!H._me||(content.health._parseDate||'')>(H._parseDate||'')){H=content.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}}catch(e){}}
-async function pushSync(){if(!syncEnabled)return;clearTimeout(pushThrottle);pushThrottle=setTimeout(async()=>{try{const payload={records:R,health:Object.keys(H).length>0?H:null,updated:ld(),device:'ios'};const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));let sha=null;try{const r=await fetch(syncURL,{headers:{Accept:'application/vnd.github.v3+json'}});if(r.ok){const d=await r.json();sha=d.sha}}catch(e){}const body=JSON.stringify({message:'sync: '+ld(),content,sha});await fetch(syncURL,{method:'PUT',headers:{Authorization:'token '+SYNC_TOKEN,'Content-Type':'application/json'},body});localStorage.setItem("sync_last",new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}));updateSyncBadge()}catch(e){}},2000)}
-const origSv=sv;sv=function(){origSv();pushSync()};
-setTimeout(pullSync,2000);
-function dsk_(){const n=new Date(),ts=fd(n),ws=new Date(n);ws.setDate(n.getDate()-n.getDay());const t=R.filter(r=>r.date===ts),w=R.filter(r=>r.date>=fd(ws)),m=R.reduce((s,r)=>s+(r.duration||0),0)/60;document.getElementById('skpi').innerHTML=`<div class="kpi"><div class="kpi-val">${t.length}</div><div class="kpi-label">今日</div></div><div class="kpi"><div class="kpi-val">${w.length}</div><div class="kpi-label">本周</div></div><div class="kpi"><div class="kpi-val">${R.length}</div><div class="kpi-label">总计</div></div><div class="kpi"><div class="kpi-val">${Math.round(m)}</div><div class="kpi-label">总专注(分)</div></div>`}
-function ag(d,vd){if(vd===0)vd=10000;const c=new Date();c.setDate(c.getDate()-vd);const cs=fd(c),f=d.filter(x=>x.date>=cs),bd_={};f.forEach(x=>{bd_[x.date]=(bd_[x.date]||0)+1});let e=Object.entries(bd_).sort();if(e.length===0)return[];if(vd<=30)return e;const ml={};e.forEach(([dt,v])=>{const mk=dt.slice(0,7);if(!ml[mk])ml[mk]={s:0,n:0};ml[mk].s+=v;ml[mk].n++});return Object.entries(ml).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10])}
-function cma_(d,p){return d.map((_,i)=>{const s=d.slice(Math.max(0,i-p+1),i+1);return[d[i][0],Math.round(s.reduce((a,b)=>a+b[1],0)/s.length*10)/10]})}
-function dsc_(cid,sl,opts={}){
-  const ct=document.getElementById(cid);if(!ct)return;const W=Math.min(ct.clientWidth-2,600),H=ct.clientHeight-2,pl=42,pr=12,pt_=12,pb_=36,pW=W-pl-pr,pH=H-pt_-pb_;
-  let av=[],al=[];sl.forEach(s=>s.data.forEach(d=>{av.push(d[1]);al.push(d[0])}));al=[...new Set(al)].sort();
-  if(av.length===0){ct.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">暂无数据</div>';return}
-  let ym=Math.min(...av),yM=Math.max(...av),r_=yM-ym||1;ym=Math.max(0,ym-r_*.12);yM=yM+r_*.15;
-  if(opts.refLow!=null){ym=Math.min(ym,opts.refLow*.85);yM=Math.max(yM,opts.refHigh*1.15)}
-  const ys=v=>pt_+pH*(1-(v-ym)/(yM-ym)),xs=(l,i)=>al.length<=1?pl+pW/2:pl+(pW*i)/(al.length-1);
-  let svg=`<svg width="${W}" height="${H}" style="background:#0d1117">`;
-  if(opts.refLow!=null){const yl=ys(opts.refLow),yh=ys(opts.refHigh);svg+=`<rect x="${pl}" y="${yh}" width="${pW}" height="${yl-yh}" fill="${opts.refColor||'#3fb950'}" fill-opacity="0.06"/><line x1="${pl}" x2="${W-pr}" y1="${yl}" y2="${yl}" stroke="${opts.refColor||'#3fb950'}" stroke-width="0.6" stroke-dasharray="3 2" opacity="0.3"/><line x1="${pl}" x2="${W-pr}" y1="${yh}" y2="${yh}" stroke="${opts.refColor||'#3fb950'}" stroke-width="0.6" stroke-dasharray="3 2" opacity="0.3"/>`}
-  for(let i=0;i<=4;i++){const v=ym+(yM-ym)*i/4,y=ys(v);svg+=`<line x1="${pl}" x2="${W-pr}" y1="${y}" y2="${y}" stroke="#21262d" stroke-width="0.4"/><text x="${pl-4}" y="${y+3}" fill="#484f58" font-size="8" text-anchor="end">${fa_(v)}</text>`}
-  const xs2=Math.max(1,Math.floor(al.length/5));for(let i=0;i<al.length;i+=xs2){const l=al[i];svg+=`<text x="${xs(l,i)}" y="${H-pb_+14}" fill="#8b949e" font-size="9" text-anchor="middle">${l.length>7?l.slice(5):l}</text>`}
-  svg+=`<line x1="${pl}" x2="${W-pr}" y1="${ys(ym)}" y2="${ys(ym)}" stroke="#30363d" stroke-width="0.6"/>`;
-  const cs_=opts.colors||['#8b949e','#d29922','#db61a2'];sl.forEach((s,si)=>{const c=cs_[si%cs_.length];const pts=s.data.map((d,i)=>`${xs(d[0],al.indexOf(d[0]))},${ys(d[1])}`);if(pts.length>1)svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="${s.width||1.3}" stroke-linejoin="round" stroke-linecap="round"/>`;if(s.type==='scatter'&&s.data.length<=60)s.data.forEach(d=>{svg+=`<circle cx="${xs(d[0],al.indexOf(d[0]))}" cy="${ys(d[1])}" r="1.5" fill="${c}" opacity="0.5"/>`})});
-  svg+='</svg>';ct.innerHTML=svg
+function showSyncModal(){
+  document.getElementById('syncUserInp').value=SYNC_USER;
+  document.getElementById('syncTokenInp').value=SYNC_TOKEN;
+  document.getElementById('logoutSyncBtn').style.display=syncEnabled?'block':'none';
+  document.getElementById('forceSyncBtn').style.display=syncEnabled?'block':'none';
+  document.getElementById('syncModal').classList.add('show');
 }
-function fa_(v){if(v>=10000)return(v/1000).toFixed(0)+'k';if(v>=1000)return(v/1000).toFixed(1)+'k';return v%1===0?Math.round(v).toString():v.toFixed(1)}
-function dfc_(){const a=ag(R.map(r=>[r.date,1]),svd);if(a.length===0){document.getElementById('chF').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">暂无记录</div>';return}dsc_('chF',[{data:a,type:'scatter',width:0},{data:cma_(a,7),width:1.5}],{colors:['#8b949e','#db61a2']})}
-function dwc_(){const ks=['stand','breathe','tidy','face'],abd={};R.forEach(r=>{const w_=r.wellness||{};ks.forEach(k=>{if(w_[k]){if(!abd[k])abd[k]={};abd[k][r.date]=(abd[k][r.date]||0)+1}})});dsc_('chW',ks.map(k=>({data:Object.entries(abd[k]||{}).sort()})),{colors:['#d29922','#39c5cf','#db61a2','#3fb950']})}
+function confirmSync(){
+  const u=document.getElementById('syncUserInp').value.trim();
+  const t=document.getElementById('syncTokenInp').value.trim();
+  if(!u){alert('请输入用户名');return}
+  if(!t||!t.startsWith('ghp_')){alert('Token 应以 ghp_ 开头');return}
+  localStorage.setItem('sync_user',u);localStorage.setItem('sync_token',t);
+  SYNC_USER=u;SYNC_TOKEN=t;syncURL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync_'+u+'.json';syncEnabled=true;
+  updateSyncBadge();document.getElementById('logoutSyncBtn').style.display='block';document.getElementById('forceSyncBtn').style.display='block';document.getElementById('syncModal').classList.remove('show');
+  doFullSync();startPeriodicSync();toast('同步已启用')
+}
+function logoutSync(){
+  localStorage.removeItem('sync_user');localStorage.removeItem('sync_token');
+  SYNC_USER='';SYNC_TOKEN='';syncEnabled=false;
+  if(syncInterval)clearInterval(syncInterval);
+  updateSyncBadge();document.getElementById('syncModal').classList.remove('show');
+  toast('已退出同步，数据保留本地')
+}
+function updateSyncBadge(){const b=document.getElementById('syncBadge');const last=localStorage.getItem('sync_last')||'';b.textContent=syncEnabled?'☁️ '+SYNC_USER+(last?' · '+last:''):'☁️ 设置同步'}
+function forceSyncNow(){doFullSync();toast('正在同步...')}
+function startPeriodicSync(){if(syncInterval)clearInterval(syncInterval);syncInterval=setInterval(doFullSync,60000)} // every 60s
 
-// ═══════════════ KEY METRICS ═══════════════
-const KM=['HKQuantityTypeIdentifierBodyMass','HKQuantityTypeIdentifierBloodPressureSystolic','HKQuantityTypeIdentifierVO2Max','HKQuantityTypeIdentifierDistanceWalkingRunning','HKQuantityTypeIdentifierHeartRateVariabilitySDNN','HKQuantityTypeIdentifierRestingHeartRate'];
-function dkm(){const ct=document.getElementById('kmGrid');if(!ct||Object.keys(H).length===0){ct.innerHTML='';return}const days=Object.keys(H).filter(d=>d>='2020').sort(),r7=days.slice(-7),r30=days.slice(-30);let h='';for(const t of KM){const b=bm[t];if(!b)continue;let v7=[],v30=[];r7.forEach(d=>{const v=H[d]?.[t];if(v!=null)v7.push(v)});r30.forEach(d=>{const v=H[d]?.[t];if(v!=null)v30.push(v)});const cur=v7.length>0?v7[v7.length-1]:(v30.length>0?v30[v30.length-1]:null);let st='good';if(cur!=null&&b.low!=null&&b.high!=null){if(cur<b.low||cur>b.high)st='bad';else if(b.optimal!=null&&Math.abs(cur-b.optimal)>(b.high-b.low)*.2)st='warn'}h+=`<div class="key-metric-card${t===sm?' selected':''}" onclick="skm_('${t}')"><div class="km-status ${st}"></div><div class="km-name">${b.label}</div><div class="km-value">${cur!=null?cur:'--'}<span class="km-unit">${b.unit}</span></div><div class="km-benchmark">参考 ${b.low}-${b.high}</div></div>`}ct.innerHTML=h}
-function skm_(t){sm=t;document.getElementById('chTitle').textContent=bm[t]?.label||t;dkm();dhc()}
-function bms(){const cats={cardio:'心血管',activity:'活动',body:'身体',sleep:'睡眠',vitals:'生命体征',other:'其他'};let h='';const seen=new Set();for(const[t,b]of Object.entries(bm)){if(!seen.has(b.category)){seen.add(b.category);h+=`<div class="metric-cat-title">${cats[b.category]||b.category}</div>`}h+=`<button class="metric-chip${t===sm?' selected':''}" onclick="skm_('${t}')">${b.label}</button>`}document.getElementById('ms').innerHTML=h}
-function shr(d){hvd=d;dhc()}
-function dhc(){if(Object.keys(H).length===0){document.getElementById('chH').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:11px">请加载健康数据</div>';return}const b=bm[sm];if(!b)return;const days=Object.keys(H).filter(d=>d>='2020').sort(),c=new Date();if(hvd>0)c.setDate(c.getDate()-hvd);const cs=fd(c),f=hvd===0?days:days.filter(d=>d>=cs);let raw=f.map(d=>[d,H[d]?.[sm]||null]).filter(d=>d[1]!=null);let ag_=raw;if(hvd>90){const m={};raw.forEach(([d,v])=>{const mk=d.slice(0,7);if(!m[mk])m[mk]={s:0,n:0};m[mk].s+=v;m[mk].n++});ag_=Object.entries(m).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10]).sort()}dsc_('chH',[{data:ag_,type:'scatter',width:0},{data:cma_(ag_,7),width:1.3},{data:cma_(ag_,30),width:1.3}],{colors:['#484f58','#d29922','#db61a2'],refLow:b.low,refHigh:b.high,refOptimal:b.optimal,refColor:'#3fb950',optColor:'#58a6ff'})}
+// Core: Pull remote → merge with local → push merged result
+async function doFullSync(){
+  if(!syncEnabled)return;
+  try{
+    // 1. Pull remote data
+    let remoteRecords=[],remoteHealth=null;
+    try{
+      const resp=await fetch(syncURL,{headers:{Accept:'application/vnd.github.v3+json'}});
+      if(resp.ok){const d=await resp.json();const c=JSON.parse(atob(d.content));remoteRecords=c.records||[];remoteHealth=c.health||null}
+    }catch(e){}
+    // 2. Merge: union of local + remote (dedup by date+time)
+    const all=[...R,...remoteRecords];
+    const seen=new Set();const merged=[];
+    for(const r of all){const key=r.date+'_'+r.time;if(!seen.has(key)){seen.add(key);merged.push(r)}}
+    merged.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+    const newCount=merged.length-R.length;
+    if(newCount!==0){R=merged;localStorage.setItem('pm_ios',JSON.stringify(R));upc();ds_()}
+    // 3. Health: latest wins
+    if(remoteHealth&&Object.keys(remoteHealth).length>0){
+      if(!H._me||(remoteHealth._parseDate||'')>(H._parseDate||'')){H=remoteHealth;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}
+    }
+    // 4. Push merged data
+    if(newCount!==0||remoteRecords.length!==R.length){
+      const payload={records:R,health:Object.keys(H).length>0?H:null,updated:ld()};
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      let sha=null;try{const r=await fetch(syncURL,{headers:{Accept:'application/vnd.github.v3+json'}});if(r.ok){const d=await r.json();sha=d.sha}}catch(e){}
+      await fetch(syncURL,{method:'PUT',headers:{Authorization:'token '+SYNC_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync: '+ld(),content,sha})});
+      localStorage.setItem('sync_last',new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+    }
+    updateSyncBadge();
+    if(newCount!==0)toast('同步: '+ (newCount>0?'+':'')+newCount+' 条记录');
+  }catch(e){console.log('sync err:',e.message)}
+}
 
-// ═══════════════ TOAST ═══════════════
-function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),3000)}
+// Override save to trigger sync
+const origSave=sv;sv=function(){origSave();if(syncEnabled){clearTimeout(syncThrottle);syncThrottle=setTimeout(doFullSync,3000)}};
 
-// ═══════════════ INIT ═══════════════
-try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
-let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
-updateSyncBadge();document.getElementById('syncBadge').addEventListener('click',showSyncModal);
-rt_();
-// Auto start/pause on visibility change (iOS foreground/background)
-let wasRunningBeforeHidden=true; // assume was running so first open auto-starts
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){wasRunningBeforeHidden=rn;if(rn)pt()}else{if(wasRunningBeforeHidden&&!document.getElementById('fbo').classList.contains('show')){st()}}
-});
-// Auto-start on first open
-setTimeout(()=>{if(!rn&&!document.getElementById('fbo').classList.contains('show'))st()},800);
-</script></body></html>
+setTimeout(()=>{doFullSync();startPeriodicSync()},4000);
+const syncBadge=document.getElementById('syncBadge');updateSyncBadge();syncBadge.addEventListener('click',showSyncModal);
+
+>
