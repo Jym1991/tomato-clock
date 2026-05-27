@@ -105,7 +105,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);box-sha
 
 <div class="sysmon-bar">
   <div class="sysmon-item">🍅 今日 <span class="sysmon-val" id="pomoV">0</span> 个</div>
-  <span class="ios-badge">云程奇点</span>
+  <span class="ios-badge" id="syncBadge" style="cursor:pointer" onclick="if(!syncEnabled)setupSync()" title="多设备同步"></span>
 </div>
 
 <div class="presence-bar">
@@ -238,9 +238,56 @@ function sw(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove(
 // ═══════════════ STATS ═══════════════
 function ssr(d){svd=d;ds_()}function ds_(){dsk_();dfc_();dwc_()}
 
-// Data sync: Export / Import
+// Data sync: Export / Import + GitHub auto-sync
 function exportData(){const data={version:6,date:ld(),records:R,health:Object.keys(H).length>0?H:null};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='pomodoro_backup_'+ld()+'.json';a.click();URL.revokeObjectURL(url);toast('数据已导出')}
 function importData(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.records&&Array.isArray(d.records)){const exist=new Set(R.map(r=>r.date+'_'+r.time));const added=d.records.filter(r=>!exist.has(r.date+'_'+r.time));R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();ds_();upc();toast('导入 '+added.length+' 条新记录')}if(d.health&&Object.keys(d.health).length>0&&Object.keys(H).length===0){H=d.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}}catch(ex){toast('文件格式错误')}};r.readAsText(f)}
+
+// GitHub Auto-Sync (seamless multi-device)
+const SYNC_URL='https://api.github.com/repos/Jym1991/tomato-clock/contents/sync.json';
+const SYNC_TOKEN=localStorage.getItem('sync_token')||'';
+let syncEnabled=!!SYNC_TOKEN,pushThrottle=null;
+function setupSync(){
+  const token=prompt('请输入 GitHub Personal Access Token 以启用多设备无缝同步：\n\n（在 https://github.com/settings/tokens 创建，勾选 repo 权限）\n\n留空则取消同步');
+  if(token&&token.startsWith('ghp_')){localStorage.setItem('sync_token',token);location.reload()}
+  else if(token){alert('Token 格式不正确，应以 ghp_ 开头')}
+}
+
+// Pull from GitHub on load (no auth needed for public repos)
+async function pullSync(){
+  if(!syncEnabled)return;
+  try{
+    const resp=await fetch(SYNC_URL,{headers:{Accept:'application/vnd.github.v3+json'}});
+    if(!resp.ok)return; // no sync.json yet
+    const d=await resp.json();const content=JSON.parse(atob(d.content));
+    if(content.records&&Array.isArray(content.records)){
+      const exist=new Set(R.map(r=>r.date+'_'+r.time));
+      const added=content.records.filter(r=>!exist.has(r.date+'_'+r.time));
+      if(added.length>0){R=[...R,...added];R.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));sv();upc();console.log('Sync: pulled '+added.length+' records')}
+    }
+    if(content.health&&Object.keys(content.health).length>0&&Object.keys(H).length===0){H=content.health;localStorage.setItem('pm_health_ios',JSON.stringify(H));dkm();bms();dhc()}
+  }catch(e){console.log('Sync pull failed:',e.message)}
+}
+
+// Push to GitHub after each pomodoro
+async function pushSync(){
+  if(!syncEnabled)return;
+  clearTimeout(pushThrottle);
+  pushThrottle=setTimeout(async()=>{
+    try{
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify({records:R,health:Object.keys(H).length>0?H:null,updated:ld()}))));
+      let sha=null;
+      try{const r=await fetch(SYNC_URL,{headers:{Accept:'application/vnd.github.v3+json'}});if(r.ok){const d=await r.json();sha=d.sha}}catch(e){}
+      const body=JSON.stringify({message:'sync: '+ld(),content,sha});
+      await fetch(SYNC_URL,{method:'PUT',headers:{Authorization:'token '+SYNC_TOKEN,'Content-Type':'application/json'},body});
+      console.log('Sync: pushed '+R.length+' records')
+    }catch(e){console.log('Sync push failed:',e.message)}
+  },2000)
+}
+
+// Auto-push after pomodoro save
+const origSv=sv;sv=function(){origSv();pushSync()};
+// Pull on load
+setTimeout(pullSync,2000);
 function dsk_(){const n=new Date(),ts=fd(n),ws=new Date(n);ws.setDate(n.getDate()-n.getDay());const t=R.filter(r=>r.date===ts),w=R.filter(r=>r.date>=fd(ws)),m=R.reduce((s,r)=>s+(r.duration||0),0)/60;document.getElementById('skpi').innerHTML=`<div class="kpi"><div class="kpi-val">${t.length}</div><div class="kpi-label">今日</div></div><div class="kpi"><div class="kpi-val">${w.length}</div><div class="kpi-label">本周</div></div><div class="kpi"><div class="kpi-val">${R.length}</div><div class="kpi-label">总计</div></div><div class="kpi"><div class="kpi-val">${Math.round(m)}</div><div class="kpi-label">总专注(分)</div></div>`}
 function ag(d,vd){if(vd===0)vd=10000;const c=new Date();c.setDate(c.getDate()-vd);const cs=fd(c),f=d.filter(x=>x.date>=cs),bd_={};f.forEach(x=>{bd_[x.date]=(bd_[x.date]||0)+1});let e=Object.entries(bd_).sort();if(e.length===0)return[];if(vd<=30)return e;const ml={};e.forEach(([dt,v])=>{const mk=dt.slice(0,7);if(!ml[mk])ml[mk]={s:0,n:0};ml[mk].s+=v;ml[mk].n++});return Object.entries(ml).map(([k,o])=>[k,Math.round(o.s/o.n*10)/10])}
 function cma_(d,p){return d.map((_,i)=>{const s=d.slice(Math.max(0,i-p+1),i+1);return[d[i][0],Math.round(s.reduce((a,b)=>a+b[1],0)/s.length*10)/10]})}
@@ -277,6 +324,7 @@ function toast(m){const e=document.getElementById('toast');e.textContent=m;e.cla
 // ═══════════════ INIT ═══════════════
 try{const c=JSON.parse(localStorage.getItem('pm_health_ios')||'{}');if(Object.keys(c).length>0){H=c;document.getElementById('importHint').style.display='none'}}catch(e){}
 let lastDate=ld();setInterval(()=>{const t=ld();if(t!==lastDate){lastDate=t;upc()}},30000);
+document.getElementById('syncBadge').textContent=syncEnabled?'☁️ 同步中':'☁️ 设置同步';
 rt_();
 // Auto start/pause on visibility change (iOS foreground/background)
 let wasRunningBeforeHidden=true; // assume was running so first open auto-starts
